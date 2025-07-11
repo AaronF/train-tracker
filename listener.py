@@ -12,8 +12,8 @@ STANOX_OF_INTEREST = ['59421', '61006', '59401'] # Des, Ket, Mark
 NEARBY_TRAINS_FILE = 'nearby_trains.json'
 
 class TrainListener(stomp.ConnectionListener):
-	# def on_error(self, frame):
-	# 	print('received an error "%s"' % frame.body)
+	def on_error(self, frame):
+		print('received an error "%s"' % frame)
 	def on_message(self, frame):
 		# print('received a message "%s"' % frame)
 		data = json.loads(frame.body)
