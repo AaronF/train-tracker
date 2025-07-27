@@ -2,3 +2,4 @@
 venv
 nearby_trains.json
 td_test_data*
+.DS_Store

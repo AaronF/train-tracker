@@ -7,7 +7,7 @@ messageTypes = ['CA_MSG','CB_MSG','CC_MSG']
 
 def main():
     Loco = {}
-    with open('td_test_data__2025_07_21.json','r') as file:
+    with open('td_test_data__2025_07_25.json','r') as file:
         for line in file:
             # print(line.strip())
             data = json.loads(line)
