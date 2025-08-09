@@ -1,87 +1,112 @@
-import json
-import datetime
+import os, stomp, json, datetime, time, segment_maker
+from dotenv import load_dotenv
 
-SEGMENTS = {
-	'SEG01' : {
-		'signals' : ['0053'],
-		'trains' : []
-	},
-	'SEG02' : {
-		'signals' : ['0066'],
-		'trains' : []
-	},
-	'SEG03' : {
-		'signals' : ['0067'],
-		'trains' : []
-	},
-	'SEG04' : {
-		'signals' : ['0074'],
-		'trains' : []
-	},
-	'SEG05' : {
-		'signals' : ['0081'],
-		'trains' : []
-	},
-	'SEG06' : {
-		'signals' : ['0191'],
-		'trains' : []
-	},
-	'SEG07' : {
-		'signals' : ['0192', '0195', 'K195'],
-		'trains' : []
-	},
-	'SEG08' : {
-		'signals' : ['0196', '0201', 'W201'],
-		'trains' : []
-	},
-	'SEG09' : {
-		'signals' : ['0202', '0205'],
-		'trains' : []
-	},
-	'SEG10' : {
-		'signals' : ['0206'],
-		'trains' : []
-	},
-	'SEG11' : {
-		'signals' : ['0212'],
-		'trains' : []
-	},
-	'SEG12' : {
-		'signals' : ['0209'],
-		'trains' : []
-	},
-}
+load_dotenv()
 
-def main():
-	with open('td_test_data__2025_07_31.json','r') as file:
+SEGMENTS = segment_maker.make_segments()
+AREA = ['KG','WG']
+
+# def to_segment(action):
+# 	if 'descr' in action and 'to' in action:
+# 		train = action['descr']
+# 		signal = action['to']
+
+# 		current_segment = None
+# 		target_segment = None
+
+# 		for segment_name, segment in SEGMENTS.items():
+# 			if train in segment['trains']:
+# 				current_segment = (segment_name, segment)
+# 			if signal in segment['signals']:
+# 				target_segment = (segment_name, segment)
+
+# 		if current_segment:
+# 			current_segment[1]['trains'].remove(train)
+
+# 		if target_segment:
+# 			target_segment[1]['trains'].clear()
+# 			target_segment[1]['trains'].append(train)
+
+# 		# if current_segment or target_segment:
+# 			# print("---")
+# 			# current_segment and print("remove " + train + " from " + current_segment[0])
+# 			# target_segment and print("add " + train + " to " + target_segment[0])
+# 	if 'descr' in action and 'from' in action and not 'to' in action:
+# 		train = action['descr']
+
+# 		for segment_name, segment in SEGMENTS.items():
+# 			if train in segment['trains']:
+# 				segment['trains'].remove(train)
+
+def to_segment(action):
+	train = action.get('descr')
+	if not train:
+		return
+
+	# Train moving to a new signal
+	if 'to' in action:
+		signal = action['to']
+		current_segment = next(((n, s) for n, s in SEGMENTS.items() if train in s['trains']), None)
+		target_segment = next(((n, s) for n, s in SEGMENTS.items() if signal in s['signals']), None)
+
+		if current_segment:
+			current_segment[1]['trains'].remove(train)
+		if target_segment:
+			target_segment[1]['trains'].clear()
+			target_segment[1]['trains'].append(train)
+		return
+
+	# Train leaving without a target
+	if 'from' in action:
+		for segment in SEGMENTS.values():
+			if train in segment['trains']:
+				segment['trains'].remove(train)
+				break
+
+
+def load_from_test_file():
+	with open('td_test_data__2025_08_01.json','r') as file:
 		for line in file:
 			data = json.loads(line)
 			for item in data:
 				action = data[item]
-				if 'descr' in action and 'to' in action:
-					train = action['descr']
-					signal = action['to']
 
-					current_segment = None
-					target_segment = None
+				to_segment(action)
+				# time.sleep(0.5)
 
-					for segment_name, segment in SEGMENTS.items():
-						if train in segment['trains']:
-							current_segment = (segment_name, segment)
-						if signal in segment['signals']:
-							target_segment = (segment_name, segment)
+def print_segments():
+	global SEGMENTS
+	current_line = ""
+	for signal in SEGMENTS:
+		if current_line != SEGMENTS[signal]['name']:
+			print("\n", SEGMENTS[signal]['name'])
+			current_line = SEGMENTS[signal]['name']
+		if not SEGMENTS[signal]['trains']:
+			print("__", end = "")
+		else:
+			print(SEGMENTS[signal]['trains'], end = "")
 
-					if current_segment:
-						current_segment[1]['trains'].remove(train)
+	print("\n")
 
-					if target_segment:
-						target_segment[1]['trains'].append(train)
+class Listener(stomp.ConnectionListener):
+	def on_message(self, frame):
+		data = json.loads(frame.body)
+		for item in data:
+			for key, value in item.items():
+				if key in ['CA_MSG', 'CB_MSG', 'CC_MSG', 'CT_MSG']:
+					if value.get('area_id') in AREA:
+						for inner in item:
+							action = item[inner]
+							to_segment(action)
 
-					if current_segment or target_segment:
-						print("---")
-						current_segment and print("remove " + train + " from " + current_segment[0])
-						target_segment and print("add " + train + " to " + target_segment[0])
+conn = stomp.Connection([('publicdatafeeds.networkrail.co.uk', 61618)], heartbeats=(15000, 15000))
+conn.set_listener('', Listener())
+conn.connect(os.getenv('NETWORK_RAIL_USERNAME'), os.getenv('NETWORK_RAIL_PASSWORD'), wait=True)
+conn.subscribe(destination=f'/topic/TD_ALL_SIG_AREA', id=1, ack='auto')
 
-					# print(json.dumps(SEGMENTS, indent=2))
+while True:
+	time.sleep(5)
+	print("\n//// TRAINS ////")
+	print_segments()
 
-main()
+# load_from_test_file()
