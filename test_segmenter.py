@@ -1,7 +1,13 @@
 import os, stomp, json, datetime, time, segment_maker
+import paho.mqtt.client as mqtt
 from dotenv import load_dotenv
 
 load_dotenv()
+
+mqttc = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+mqttc.username_pw_set(os.getenv('MQTT_USERNAME'),os.getenv('MQTT_PASSWORD'))
+mqttc.connect(os.getenv('MQTT_HOST'), 1883, 60)
+mqttc.loop_start()
 
 SEGMENTS = segment_maker.make_segments()
 AREA = ['KG','WG']
@@ -106,7 +112,10 @@ conn.subscribe(destination=f'/topic/TD_ALL_SIG_AREA', id=1, ack='auto')
 
 while True:
 	time.sleep(5)
+	# print(SEGMENTS)
 	print("\n//// TRAINS ////")
 	print_segments()
+
+	mqttc.publish('trains/segments', json.dumps(SEGMENTS))
 
 # load_from_test_file()

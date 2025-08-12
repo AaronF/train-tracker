@@ -1,0 +1,18 @@
+{
+  "dependencies": {
+    "@tailwindcss/cli": "^4.1.11",
+    "mqtt": "^5.14.0",
+    "tailwindcss": "^4.1.11"
+  },
+  "scripts": {
+    "build:css": "npx @tailwindcss/cli -i ./src/css/main.css -o ./dist/css/main.css",
+    "watch:css": "npx @tailwindcss/cli -i ./src/css/main.css -o ./dist/css/main.css --watch",
+    "build:js": "esbuild ./src/js/*.js --outdir=./dist/js --bundle --minify --sourcemap",
+    "watch:js": "esbuild ./src/js/*.js --outdir=./dist/js --bundle --minify --sourcemap --watch",
+    "watch": "concurrently \"npm:watch:css\" \"npm:watch:js\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0",
+    "esbuild": "^0.25.8"
+  }
+}
