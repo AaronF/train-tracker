@@ -1,4 +1,4 @@
-import os, stomp, json, datetime, time, segment_maker
+import os, stomp, json, datetime, time, segment_maker, logging
 import paho.mqtt.client as mqtt
 from dotenv import load_dotenv
 
@@ -11,6 +11,11 @@ mqttc.loop_start()
 
 SEGMENTS = segment_maker.make_segments()
 AREA = ['KG','WG']
+
+logging.basicConfig(
+	level=logging.INFO,
+	format='[%(asctime)s] %(levelname)s: %(message)s',
+)
 
 # def to_segment(action):
 # 	if 'descr' in action and 'to' in action:
@@ -105,12 +110,20 @@ class Listener(stomp.ConnectionListener):
 							action = item[inner]
 							to_segment(action)
 
+	def on_error(self, frame):
+		logging.error('STOMP error: %s', getattr(frame, 'body', frame))
+
+	def on_disconnected(self):
+		logging.warning('Disconnected from STOMP broker')
+
 conn = stomp.Connection([('publicdatafeeds.networkrail.co.uk', 61618)], heartbeats=(15000, 15000))
 conn.set_listener('', Listener())
 conn.connect(os.getenv('NETWORK_RAIL_USERNAME'), os.getenv('NETWORK_RAIL_PASSWORD'), wait=True)
 conn.subscribe(destination=f'/topic/TD_ALL_SIG_AREA', id=1, ack='auto')
 
 while True:
+	if not conn.is_connected():
+		logging.warning('Detected disconnect')
 	time.sleep(5)
 	# print(SEGMENTS)
 	print("\n//// TRAINS ////")
