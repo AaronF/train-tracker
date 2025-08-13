@@ -125,8 +125,7 @@ while True:
 	if not conn.is_connected():
 		logging.warning('Detected disconnect')
 	time.sleep(5)
-	# print(SEGMENTS)
-	print("\n//// TRAINS ////")
+	print("\n//// TRAINS ////", datetime.datetime.now().strftime("%H:%M:%S"))
 	print_segments()
 
 	mqttc.publish('trains/segments', json.dumps(SEGMENTS))
