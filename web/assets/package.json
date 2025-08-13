@@ -9,7 +9,8 @@
     "watch:css": "npx @tailwindcss/cli -i ./src/css/main.css -o ./dist/css/main.css --watch",
     "build:js": "esbuild ./src/js/*.js --outdir=./dist/js --bundle --minify --sourcemap",
     "watch:js": "esbuild ./src/js/*.js --outdir=./dist/js --bundle --minify --sourcemap --watch",
-    "watch": "concurrently \"npm:watch:css\" \"npm:watch:js\""
+    "watch": "concurrently \"npm:watch:css\" \"npm:watch:js\"",
+    "build": "concurrently \"npm:build:css\" \"npm:build:js\""
   },
   "devDependencies": {
     "concurrently": "^9.2.0",
