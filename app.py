@@ -1,17 +1,16 @@
-from flask import Flask, send_from_directory
+from flask import Flask
 from pathlib import Path
 
-app = Flask(__name__, static_folder=None)
-WEB_DIR = Path(__file__).parent / "web"
+BASE_DIR = Path(__file__).parent
+WEB_DIR = BASE_DIR / "web"
 
-@app.route("/")
-def index():
-	return send_from_directory(WEB_DIR, "index.html")
+# Serve files from /web at the root URL path
+app = Flask(__name__, static_folder=str(WEB_DIR), static_url_path="/")
 
-@app.route("/<path:path>")
-def static_proxy(path):
-	return send_from_directory(WEB_DIR, path)
+@app.get("/")
+def home():
+	# Serves /web/index.html
+	return app.send_static_file("index.html")
 
 if __name__ == "__main__":
-	# Bind to all interfaces for LAN access
 	app.run(host="0.0.0.0", port=1234)
