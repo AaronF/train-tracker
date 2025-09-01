@@ -26,6 +26,7 @@ MQTT_PORT = int(os.getenv('MQTT_PORT', '1883'))
 MQTT_USER = os.getenv('MQTT_USERNAME')
 MQTT_PASS = os.getenv('MQTT_PASSWORD')
 MQTT_TOPIC = 'trains/segments'
+MQTT_TOPIC_BASE = 'trains/segments'
 
 # Backoff settings for MQTT connect attempts
 MQTT_BACKOFF_START = 1       # seconds
@@ -152,6 +153,27 @@ def print_segments() -> None:
 			print(seg['trains'], end="")
 	print("\n")
 
+def build_line_payloads(segments: dict) -> dict:
+	"""
+	Returns:
+	  {
+		'line_1': { 'SEG00': {...}, 'SEG01': {...}, ... },
+		'line_2': { ... },
+		'line_3': { ... },
+		'line_4': { ... },
+	  }
+	Only segments with a valid 'name' are included.
+	"""
+	lines = {'line_1': {}, 'line_2': {}, 'line_3': {}, 'line_4': {}}
+	for seg_id, seg in segments.items():
+		line = seg.get('name')
+		if line in lines:
+			# Minimal payload the browser expects (value.trains), or send full seg if you prefer
+			# minimal:
+			lines[line][seg_id] = {'trains': seg.get('trains', [])}
+			# full:
+			# lines[line][seg_id] = seg
+	return lines
 
 class Listener(stomp.ConnectionListener):
 	def __init__(self, conn: stomp.Connection, destination: str):
@@ -218,6 +240,8 @@ def main():
 	conn.set_listener('', Listener(conn, DESTINATION))
 	connect_stomp_with_retry(conn)
 
+	line_payloads = build_line_payloads(SEGMENTS)
+
 	try:
 		while True:
 			# Keep STOMP alive/reconnect if needed
@@ -235,7 +259,17 @@ def main():
 			# Only publish if connected; otherwise skip quietly
 			if mqttc.is_connected():
 				try:
-					mqttc.publish(MQTT_TOPIC, json.dumps(SEGMENTS), qos=0, retain=False)
+					# mqttc.publish(MQTT_TOPIC, json.dumps(SEGMENTS), qos=0, retain=False)
+
+					for line_name, payload in line_payloads.items():
+						if not payload:
+							# Optional: skip empty payloads to reduce noise
+							continue
+						topic = f'{MQTT_TOPIC_BASE}/{line_name}'
+						try:
+							mqttc.publish(topic, json.dumps(payload), qos=0, retain=False)
+						except Exception as e:
+							logging.error('MQTT publish to %s failed: %s', topic, e)
 				except Exception as e:
 					logging.error('MQTT publish failed: %s', e)
 			else:
