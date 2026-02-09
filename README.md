@@ -68,9 +68,8 @@ Open:
 ## Notes / Gotchas
 
 - The UI currently subscribes to MQTT topic `trains/segments` in `web/assets/dist/js/main.js`.
-- `watch_trains.py` currently publishes per-line topics:  
-  `trains/segments/line_1`, `trains/segments/line_2`, `trains/segments/line_3`, `trains/segments/line_4`.
-- If topics are not aligned, the UI will load but not update.
+- `watch_trains.py` publishes a full-state snapshot to `trains/segments` every 5 seconds.
+- The UI and backend topics now match by default.
 
 ## Troubleshooting
 
