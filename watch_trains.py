@@ -31,6 +31,7 @@ MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
 MQTT_USER = os.getenv("MQTT_USERNAME")
 MQTT_PASS = os.getenv("MQTT_PASSWORD")
 MQTT_TOPIC = "trains/segments"
+MQTT_TOPIC_BASE = "trains/segments"
 
 RETRY_BACKOFF_START = 1
 RETRY_BACKOFF_MAX = 60
@@ -130,6 +131,20 @@ def build_segments_payload(segments: dict[str, Any]) -> dict[str, Any]:
     for seg_id, seg in segments.items():
         payload[seg_id] = {"trains": list(seg.get("trains", []))}
     return payload
+
+
+def build_line_payloads(segments: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    line_payloads: dict[str, dict[str, Any]] = {
+        "line_1": {},
+        "line_2": {},
+        "line_3": {},
+        "line_4": {},
+    }
+    for seg_id, seg in segments.items():
+        line = seg.get("name")
+        if line in line_payloads:
+            line_payloads[line][seg_id] = {"trains": list(seg.get("trains", []))}
+    return line_payloads
 
 
 def print_segments(segments: dict[str, Any]) -> None:
@@ -244,8 +259,9 @@ def ensure_mqtt_connection(client: mqtt.Client, retry_state: dict[str, Any]) -> 
 
 
 def publish_snapshot(client: mqtt.Client, segments: dict[str, Any]) -> None:
-    payload = build_segments_payload(segments)
-    client.publish(MQTT_TOPIC, json.dumps(payload), qos=0, retain=False)
+    for line_name, payload in build_line_payloads(segments).items():
+        topic = f"{MQTT_TOPIC_BASE}/{line_name}"
+        client.publish(topic, json.dumps(payload), qos=0, retain=False)
 
 
 # Main loop
